@@ -63,7 +63,7 @@ var HermesMenuButton = GObject.registerClass({
         this._settings = extensionObject.getSettings();
 
         this._panelLabel = new St.Label({
-            text: '⚡',
+            text: '⚙️',
             y_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'hermes-panel-label',
@@ -85,7 +85,6 @@ var HermesMenuButton = GObject.registerClass({
         this._scriptPath = GLib.build_filenamev([
             this._extensionObject.path, 'src', 'hermes-status.py',
         ]);
-
         this._addSettingChangedSignal('refresh-interval', this._updateTimer.bind(this));
         this._addSettingChangedSignal('position-in-panel', this._positionInPanelChanged.bind(this));
 
@@ -264,31 +263,24 @@ var HermesMenuButton = GObject.registerClass({
 
     _refreshAllData() {
         try {
-            let [ok, stdout, stderr, status] = GLib.spawn_command_line_sync(
-                'python3 ' + GLib.shell_quote(this._scriptPath)
+            let proc = Gio.Subprocess.new(
+                ['python3', this._scriptPath],
+                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
             );
+            let [ok, stdout, stderr] = proc.communicate(null, null);
+            let status = proc.get_exit_status();
             if (!ok || status !== 0) {
                 let errMsg = '';
                 if (stderr)
-                    errMsg = imports.byteArray.toString(stderr);
+                    errMsg = new TextDecoder().decode(stderr.toArray());
                 log('[hermes-monitor] script error (exit ' + status + '): ' + errMsg);
                 return;
             }
-            let text = stdout ? imports.byteArray.toString(stdout) : '{}';
+            let text = stdout ? new TextDecoder().decode(stdout.toArray()) : '{}';
             let data = JSON.parse(text);
             this._updateUsageSection(data.usage || {});
             this._updateSessionsSection(data.sessions || []);
             this._updateJobsSection(data.jobs || []);
-            // Panel indicator: working=blink, idle=green
-            if (data.agent_status === 'working') {
-                this._panelLabel.text = '⚙️';
-                this._panelLabel.add_style_class_name('hermes-panel-working');
-                this._panelLabel.remove_style_class_name('hermes-panel-idle');
-            } else {
-                this._panelLabel.text = '⚙️';
-                this._panelLabel.add_style_class_name('hermes-panel-idle');
-                this._panelLabel.remove_style_class_name('hermes-panel-working');
-            }
         } catch (e) {
             log('[hermes-monitor] refresh error: ' + e.message);
         }

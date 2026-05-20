@@ -10,12 +10,6 @@
 
 .hermes-panel-working {
     color: #f5a97f;
-    animation: hermes-blink 1s ease-in-out infinite;
-}
-
-@keyframes hermes-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
 }
 
 /* Section headers */

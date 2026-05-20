@@ -56,13 +56,12 @@ def get_jobs() -> list[dict]:
 # ── Session stats ──────────────────────────────────────────────────────
 
 def _agent_status() -> str:
-    """Check if Hermes Agent is currently working (processing a request)."""
-    state_file = HERMES_HOME / "gateway_state.json"
-    if not state_file.exists():
+    """Read agent status written by the agent-status hook (real-time)."""
+    sf = HERMES_HOME / "agent_status.json"
+    if not sf.exists():
         return "idle"
     try:
-        data = json.loads(state_file.read_text())
-        return "working" if data.get("active_agents", 0) > 0 else "idle"
+        return json.loads(sf.read_text()).get("status", "idle")
     except Exception:
         return "idle"
 

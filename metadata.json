@@ -1,10 +1,10 @@
 {
-  "description": "Monitor Hermes Agent (https://github.com/nousresearch/hermes-agent) scheduled tasks (cron jobs) and view real-time execution logs from the GNOME panel.",
+  "description": "Hermes Agent monitoring dashboard for GNOME — view usage stats, recent sessions, and cron jobs from the panel. Requires Hermes Agent (https://github.com/nousresearch/hermes-agent) v0.14+.",
   "gettext-domain": "hermes-monitor",
   "name": "Hermes Monitor",
   "settings-schema": "org.gnome.shell.extensions.hermes-monitor",
   "shell-version": ["45", "46", "47", "48", "49", "50"],
   "url": "https://github.com/forkbombruler/hermes-gnome-extension",
   "uuid": "hermes-monitor@leo",
-  "version": 2
+  "version": 3
 }

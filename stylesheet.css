@@ -4,12 +4,58 @@
     padding: 0 4px;
 }
 
-/* Summary label at top of menu */
-.hermes-summary-label {
-    font-weight: bold;
-    font-size: 13px;
-    padding: 8px 12px;
+/* Section headers */
+.hermes-section-header {
+    padding: 4px 12px;
 }
+
+.hermes-section-header-label {
+    font-weight: bold;
+    font-size: 12px;
+    color: #8aadf4;
+}
+
+/* ── Usage section ─────────────────────────────────────────────────── */
+
+.hermes-usage-item {
+    padding: 4px 0;
+}
+
+.hermes-usage-row {
+    padding: 2px 0;
+}
+
+.hermes-usage-label {
+    font-size: 12px;
+    padding: 0 12px;
+}
+
+/* ── Sessions section ──────────────────────────────────────────────── */
+
+.hermes-session-row {
+    padding: 6px 0;
+}
+
+.hermes-session-title {
+    font-weight: 600;
+    font-size: 13px;
+    padding-right: 8px;
+}
+
+.hermes-session-cost {
+    font-size: 11px;
+    color: #a6da95;
+    padding-right: 4px;
+}
+
+.hermes-session-meta {
+    font-size: 11px;
+    color: #939ab7;
+    padding-top: 2px;
+    padding-left: 0;
+}
+
+/* ── Jobs section ──────────────────────────────────────────────────── */
 
 /* Empty state */
 .hermes-empty-label {
@@ -74,15 +120,8 @@
     padding-left: 24px;
 }
 
-.hermes-last-success {
-    color: #a6da95;
-}
+/* ── Footer ────────────────────────────────────────────────────────── */
 
-.hermes-last-failed {
-    color: #ed879f;
-}
-
-/* Footer */
 .hermes-footer-item {
     padding: 4px 12px;
 }

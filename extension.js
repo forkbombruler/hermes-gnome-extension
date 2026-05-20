@@ -28,6 +28,31 @@ const STATE_CLASS = {
     disabled: 'hermes-status-disabled',
 };
 
+function _stateClass(job) {
+    if (!job.enabled)
+        return 'disabled';
+    switch (job.state) {
+        case 'running': return 'running';
+        case 'scheduled': return 'pending';
+        case 'completed': return 'idle';
+        case 'failed':
+        case 'timed_out': return 'failed';
+        default: return 'idle';
+    }
+}
+
+function _num(n) {
+    if (typeof n !== 'number')
+        return '—';
+    if (n >= 1_000_000)
+        return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 10_000)
+        return (n / 1_000).toFixed(1) + 'K';
+    if (n >= 1_000)
+        return n.toLocaleString();
+    return String(n);
+}
+
 var HermesMenuButton = GObject.registerClass({
     GTypeName: 'HermesMenuButton',
 }, class HermesMenuButton extends PanelMenu.Button {
@@ -46,53 +71,81 @@ var HermesMenuButton = GObject.registerClass({
         this.add_child(this._panelLabel);
 
         this._jobRows = {};
+        this._sessionRows = {};
+        this._usageLabels = {};
         this._settingChangedSignals = [];
         this._refreshTimeoutId = null;
 
         let hermesHome = this._settings.get_string('hermes-home');
-        if (hermesHome.startsWith('~/')) {
+        if (hermesHome.startsWith('~/'))
             hermesHome = GLib.build_filenamev([GLib.get_home_dir(), hermesHome.slice(2)]);
-        }
-        this._jobsPath = GLib.build_filenamev([hermesHome, 'cron', 'jobs.json']);
+        this._hermesHome = hermesHome;
+        this._scriptPath = GLib.build_filenamev([
+            this._extensionObject.path, 'src', 'hermes-status.py',
+        ]);
 
         this._addSettingChangedSignal('refresh-interval', this._updateTimer.bind(this));
         this._addSettingChangedSignal('position-in-panel', this._positionInPanelChanged.bind(this));
 
         this._initializeMenu();
         this._initTimer();
-        this._refreshJobData();
+        this._refreshAllData();
     }
 
     _initializeMenu() {
-        this._summaryLabel = new St.Label({
-            text: _('Loading…'),
-            style_class: 'hermes-summary-label',
+        // Section 1: Usage
+        this._usageHeader = this._createSectionHeader('📊 ' + _('Usage'));
+        this.menu.addMenuItem(this._usageHeader);
+
+        this._usageItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false, can_focus: false,
+            style_class: 'hermes-usage-item',
         });
-        let summaryItem = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
-        });
-        summaryItem.actor.add_child(this._summaryLabel);
-        this.menu.addMenuItem(summaryItem);
+        let grid = new St.BoxLayout({vertical: true, x_expand: true});
+
+        this._usageLabels.sessions = this._addUsageRow(grid, _('Sessions'));
+        this._usageLabels.messages = this._addUsageRow(grid, _('Messages'));
+        this._usageLabels.tokens = this._addUsageRow(grid, _('Tokens'));
+        this._usageLabels.cost = this._addUsageRow(grid, _('Cost'));
+
+        this._usageItem.actor.add_child(grid);
+        this.menu.addMenuItem(this._usageItem);
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        this._emptyLabel = new St.Label({
+        // Section 2: Sessions
+        this._sessionsHeader = this._createSectionHeader('📋 ' + _('Sessions'));
+        this.menu.addMenuItem(this._sessionsHeader);
+
+        this._emptySessionsItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false, can_focus: false,
+        });
+        this._emptySessionsItem.actor.add_child(new St.Label({
+            text: _('No recent sessions'),
+            style_class: 'hermes-empty-label',
+        }));
+        this.menu.addMenuItem(this._emptySessionsItem);
+
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // Section 3: Cron Jobs
+        this._jobsHeader = this._createSectionHeader('⏰ ' + _('Cron Jobs'));
+        this.menu.addMenuItem(this._jobsHeader);
+
+        this._emptyJobsItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false, can_focus: false,
+        });
+        this._emptyJobsItem.actor.add_child(new St.Label({
             text: _('No Hermes cron jobs found'),
             style_class: 'hermes-empty-label',
-        });
-        this._emptyItem = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
-        });
-        this._emptyItem.actor.add_child(this._emptyLabel);
-        this.menu.addMenuItem(this._emptyItem);
+        }));
+        this.menu.addMenuItem(this._emptyJobsItem);
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
+        // Footer
         let footerItem = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
+            reactive: false, can_focus: false,
             style_class: 'hermes-footer-item',
         });
 
@@ -105,7 +158,7 @@ var HermesMenuButton = GObject.registerClass({
         let refreshBtn = this._createFooterButton('view-refresh-symbolic', _('Refresh'));
         refreshBtn.connect('clicked', () => {
             this._initTimer();
-            this._refreshJobData();
+            this._refreshAllData();
         });
         btnBox.add_child(refreshBtn);
 
@@ -120,8 +173,34 @@ var HermesMenuButton = GObject.registerClass({
         this.menu.addMenuItem(footerItem);
 
         this.menu.connect('open-state-changed', (self, open) => {
-            if (open) this._refreshJobData();
+            if (open) this._refreshAllData();
         });
+    }
+
+    _createSectionHeader(text) {
+        let item = new PopupMenu.PopupBaseMenuItem({
+            reactive: false, can_focus: false,
+            style_class: 'hermes-section-header',
+        });
+        item.actor.add_child(new St.Label({
+            text,
+            style_class: 'hermes-section-header-label',
+        }));
+        return item;
+    }
+
+    _addUsageRow(parent, label) {
+        let row = new St.BoxLayout({
+            vertical: false,
+            style_class: 'hermes-usage-row',
+        });
+        let lbl = new St.Label({
+            text: label + ': —',
+            style_class: 'hermes-usage-label',
+        });
+        row.add_child(lbl);
+        parent.add_child(row);
+        return lbl;
     }
 
     _createFooterButton(iconName, tooltip) {
@@ -137,16 +216,150 @@ var HermesMenuButton = GObject.registerClass({
         return btn;
     }
 
-    _refreshJobData() {
-        let file = Gio.File.new_for_path(this._jobsPath);
-        let jobs = this._readJobs(file);
-        if (jobs === null) {
-            this._showEmpty();
-            return;
+    _refreshAllData() {
+        try {
+            let [ok, stdout, stderr, status] = GLib.spawn_command_line_sync(
+                'python3 ' + GLib.shell_quote(this._scriptPath)
+            );
+            if (!ok || status !== 0) {
+                let errMsg = '';
+                if (stderr)
+                    errMsg = imports.byteArray.toString(stderr);
+                log('[hermes-monitor] script error (exit ' + status + '): ' + errMsg);
+                return;
+            }
+            let text = stdout ? imports.byteArray.toString(stdout) : '{}';
+            let data = JSON.parse(text);
+            this._updateUsageSection(data.usage || {});
+            this._updateSessionsSection(data.sessions || []);
+            this._updateJobsSection(data.jobs || []);
+        } catch (e) {
+            log('[hermes-monitor] refresh error: ' + e.message);
+        }
+    }
+
+    // ── Usage section ─────────────────────────────────────────────────
+
+    _updateUsageSection(usage) {
+        let fmt = (n) => _num(n);
+        this._usageLabels.sessions.text =
+            _('Sessions') + ': ' + fmt(usage.total_sessions);
+        this._usageLabels.messages.text =
+            _('Messages') + ': ' + fmt(usage.total_messages);
+
+        let tok = fmt(usage.input_tokens) + ' in / ' + fmt(usage.output_tokens) + ' out';
+        if (usage.cache_read_tokens > 0)
+            tok += ' (+' + fmt(usage.cache_read_tokens) + ' cache)';
+        this._usageLabels.tokens.text = _('Tokens') + ': ' + tok;
+
+        this._usageLabels.cost.text =
+            _('Cost') + ': $' + (usage.cost_usd || 0).toFixed(4);
+    }
+
+    // ── Sessions section ──────────────────────────────────────────────
+
+    _updateSessionsSection(sessions) {
+        let activeIds = new Set(sessions.map(s => s.id));
+
+        for (let id of Object.keys(this._sessionRows)) {
+            if (!activeIds.has(id))
+                this._removeSessionRow(id);
         }
 
-        this._updateSummary(jobs);
+        let insertIdx = this._insertBefore(this._emptySessionsItem);
+        for (let i = 0; i < sessions.length; i++) {
+            let s = sessions[i];
+            if (this._sessionRows[s.id]) {
+                this._updateSessionRow(s, this._sessionRows[s.id]);
+            } else {
+                let row = this._createSessionRow(s);
+                this._sessionRows[s.id] = row;
+                this.menu.addMenuItem(row.item, insertIdx + i);
+            }
+        }
 
+        this._emptySessionsItem.actor.visible = sessions.length === 0;
+    }
+
+    _createSessionRow(session) {
+        let box = new St.BoxLayout({
+            vertical: true,
+            style_class: 'hermes-session-row',
+            x_expand: true,
+        });
+
+        let topLine = new St.BoxLayout({
+            vertical: false,
+            x_align: Clutter.ActorAlign.START,
+        });
+
+        let titleLabel = new St.Label({
+            text: session.title || _('Untitled'),
+            style_class: 'hermes-session-title',
+            y_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
+        topLine.add_child(titleLabel);
+
+        let costLabel = new St.Label({
+            text: session.cost_usd > 0 ? '$' + session.cost_usd.toFixed(4) : '',
+            style_class: 'hermes-session-cost',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        topLine.add_child(costLabel);
+
+        box.add_child(topLine);
+
+        let bottomLine = new St.BoxLayout({
+            vertical: false,
+            x_align: Clutter.ActorAlign.START,
+        });
+
+        let metaParts = [session.model || '—'];
+        metaParts.push(session.messages + ' msg');
+        if (session.tool_calls > 0)
+            metaParts.push(session.tool_calls + ' tools');
+        metaParts.push(session.started || '');
+
+        let metaLabel = new St.Label({
+            text: metaParts.join(' · '),
+            style_class: 'hermes-session-meta',
+        });
+        bottomLine.add_child(metaLabel);
+
+        box.add_child(bottomLine);
+
+        let item = new PopupMenu.PopupBaseMenuItem({
+            reactive: false, can_focus: false,
+        });
+        item.actor.add_child(box);
+
+        return {item, titleLabel, costLabel, metaLabel};
+    }
+
+    _updateSessionRow(session, row) {
+        row.titleLabel.text = session.title || _('Untitled');
+        row.costLabel.text = session.cost_usd > 0 ? '$' + session.cost_usd.toFixed(4) : '';
+
+        let parts = [session.model || '—'];
+        parts.push(session.messages + ' msg');
+        if (session.tool_calls > 0)
+            parts.push(session.tool_calls + ' tools');
+        parts.push(session.started || '');
+
+        row.metaLabel.text = parts.join(' · ');
+    }
+
+    _removeSessionRow(id) {
+        if (this._sessionRows[id]) {
+            this._sessionRows[id].item.destroy();
+            delete this._sessionRows[id];
+        }
+    }
+
+    // ── Jobs section ──────────────────────────────────────────────────
+
+    _updateJobsSection(jobs) {
         let activeIds = new Set(jobs.map(j => j.id));
 
         for (let id of Object.keys(this._jobRows)) {
@@ -154,90 +367,26 @@ var HermesMenuButton = GObject.registerClass({
                 this._removeJobRow(id);
         }
 
-        for (let job of jobs) {
+        let insertIdx = this._insertBefore(this._emptyJobsItem);
+        for (let i = 0; i < jobs.length; i++) {
+            let job = jobs[i];
             if (this._jobRows[job.id]) {
                 this._updateJobRow(job, this._jobRows[job.id]);
             } else {
                 let row = this._createJobRow(job);
                 this._jobRows[job.id] = row;
-                let idx = this._jobInsertIndex();
-                this.menu.addMenuItem(row.item, idx);
+                this.menu.addMenuItem(row.item, insertIdx + i);
             }
         }
 
-        let hasJobs = Object.keys(this._jobRows).length > 0;
-        this._emptyItem.actor.visible = !hasJobs;
-    }
+        this._emptyJobsItem.actor.visible = jobs.length === 0;
 
-    _readJobs(file) {
-        if (!file.query_exists(null))
-            return null;
-
-        let [, contents] = file.load_contents(null);
-        let text = new TextDecoder().decode(contents);
-
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (e) {
-            return null;
-        }
-
-        let raw = data.jobs || [];
-        // Flatten nested objects to plain strings for GJS widgets
-        return raw.map(j => {
-            let sched = j.schedule || {};
-            let origin = j.origin || {};
-            return {
-                id: j.id || '',
-                name: j.name || 'Unnamed',
-                state: j.state || 'idle',
-                enabled: j.enabled !== false,
-                schedule: sched.display || sched.expr || '—',
-                next_run: (j.next_run_at || '').slice(0, 16),
-                last_status: j.last_status || '—',
-                platform: origin.platform || 'local',
-                brief: (j.prompt || '').slice(0, 80).replace(/\n/g, ' '),
-            };
-        });
-    }
-
-    _updateSummary(jobs) {
-        let total = jobs.length;
         let running = 0;
-        let failed = 0;
-
         for (let j of jobs) {
             if (j.state === 'running')
                 running++;
-            if (j.state === 'failed' || j.last_status === 'failed')
-                failed++;
         }
-
-        if (total === 0) {
-            this._panelLabel.text = '⚡';
-            this._summaryLabel.text = _('No Hermes cron jobs');
-            return;
-        }
-
-        this._panelLabel.text = running > 0 ? `⚡${running}` : '⚡';
-
-        let parts = [`${total} job${total !== 1 ? 's' : ''}`];
-        if (running > 0)
-            parts.push(`${running} running`);
-        if (failed > 0)
-            parts.push(`${failed} failed`);
-        this._summaryLabel.text = parts.join(' · ');
-    }
-
-    _jobInsertIndex() {
-        let items = this.menu._getMenuItems();
-        for (let i = items.length - 1; i >= 0; i--) {
-            if (items[i] === this._emptyItem)
-                return i + 1;
-        }
-        let footerIdx = items.length - 3;
-        return footerIdx > 0 ? footerIdx : items.length;
+        this._panelLabel.text = running > 0 ? '⚡' + running : '⚡';
     }
 
     _createJobRow(job) {
@@ -252,10 +401,10 @@ var HermesMenuButton = GObject.registerClass({
             x_align: Clutter.ActorAlign.START,
         });
 
-        let state = job.state || 'idle';
+        let cls = _stateClass(job);
         let statusDot = new St.Label({
-            text: STATE_ICON[state] || STATE_ICON.idle,
-            style_class: `hermes-status-dot ${STATE_CLASS[state] || STATE_CLASS.idle}`,
+            text: job.icon || STATE_ICON[job.state] || STATE_ICON.idle,
+            style_class: 'hermes-status-dot ' + STATE_CLASS[cls],
             y_align: Clutter.ActorAlign.CENTER,
         });
         topLine.add_child(statusDot);
@@ -291,62 +440,34 @@ var HermesMenuButton = GObject.registerClass({
         });
         bottomLine.add_child(nextLabel);
 
-        let statusMetaLabel = null;
-        if (job.last_status && job.last_status !== '—') {
-            statusMetaLabel = new St.Label({
-                text: ' · ' + job.last_status,
-                style_class: `hermes-job-meta hermes-last-${job.last_status}`,
-            });
-            bottomLine.add_child(statusMetaLabel);
-        }
-
         box.add_child(bottomLine);
 
         let item = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
+            reactive: false, can_focus: false,
         });
         item.actor.add_child(box);
 
         if (job.brief)
             item.actor.tooltip_text = job.brief;
 
-        return {
-            item,
-            statusDot,
-            nameLabel,
-            scheduleLabel,
-            nextLabel,
-            statusMetaLabel,
-        };
+        return {item, statusDot, nameLabel, scheduleLabel, nextLabel};
     }
 
     _updateJobRow(job, row) {
-        let state = job.state || 'idle';
-        row.statusDot.text = STATE_ICON[state] || STATE_ICON.idle;
+        let cls = _stateClass(job);
+        row.statusDot.text = job.icon || STATE_ICON[job.state] || STATE_ICON.idle;
 
-        for (let cls of Object.values(STATE_CLASS)) {
-            if (row.statusDot.has_style_class_name(cls))
-                row.statusDot.remove_style_class_name(cls);
+        for (let c of Object.values(STATE_CLASS)) {
+            if (row.statusDot.has_style_class_name(c))
+                row.statusDot.remove_style_class_name(c);
         }
-        if (STATE_CLASS[state])
-            row.statusDot.add_style_class_name(STATE_CLASS[state]);
+        row.statusDot.add_style_class_name(STATE_CLASS[cls]);
 
         row.nameLabel.text = job.name || _('Unnamed');
         row.scheduleLabel.text = job.schedule || '—';
-
         row.nextLabel.text = job.next_run
             ? _('Next: ') + job.next_run.replace('T', ' ')
             : _('No next run');
-
-        if (row.statusMetaLabel) {
-            if (job.last_status && job.last_status !== '—') {
-                row.statusMetaLabel.text = ' · ' + job.last_status;
-                row.statusMetaLabel.visible = true;
-            } else {
-                row.statusMetaLabel.visible = false;
-            }
-        }
     }
 
     _removeJobRow(id) {
@@ -356,15 +477,18 @@ var HermesMenuButton = GObject.registerClass({
         }
     }
 
-    _showEmpty() {
-        this._panelLabel.text = '⚡';
-        this._summaryLabel.text = _('No Hermes cron jobs');
+    // ── Helpers ───────────────────────────────────────────────────────
 
-        for (let id of Object.keys(this._jobRows))
-            this._removeJobRow(id);
-
-        this._emptyItem.actor.show();
+    _insertBefore(anchor) {
+        let items = this.menu._getMenuItems();
+        for (let i = 0; i < items.length; i++) {
+            if (items[i] === anchor)
+                return i;
+        }
+        return 0;
     }
+
+    // ── Timer ─────────────────────────────────────────────────────────
 
     _initTimer() {
         this._destroyTimer();
@@ -373,7 +497,7 @@ var HermesMenuButton = GObject.registerClass({
             GLib.PRIORITY_DEFAULT,
             interval,
             () => {
-                this._refreshJobData();
+                this._refreshAllData();
                 return GLib.SOURCE_CONTINUE;
             }
         );

@@ -1,59 +1,59 @@
-/* prefs.js — Hermes Monitor preferences window */
+import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
-import Adw from 'gi://Adw';
 
-import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-export default class HermesMonitorPreferences extends ExtensionPreferences {
+export default class HermesPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         window._settings = this.getSettings();
 
-        let page = new Adw.PreferencesPage();
+        const page = new Adw.PreferencesPage({
+            name: 'general',
+            title: _('General'),
+            icon_name: 'dialog-information-symbolic',
+        });
         window.add(page);
 
-        // ── General group ──────────────────────────
-        let general = new Adw.PreferencesGroup({title: _('General')});
-        page.add(general);
+        const group = new Adw.PreferencesGroup({
+            title: _('Behavior'),
+        });
+        page.add(group);
 
-        let refreshRow = new Adw.SpinRow({
-            title: _('Refresh interval'),
-            subtitle: _('How often (in seconds) to check for job updates (5–600)'),
+        const intervalRow = new Adw.SpinRow({
+            title: _('Refresh Interval'),
+            subtitle: _('How often to check for job updates, in seconds'),
             adjustment: new Gtk.Adjustment({
-                lower: 5, upper: 600, step_increment: 5,
+                lower: 5,
+                upper: 600,
+                step_increment: 5,
             }),
             value: window._settings.get_int('refresh-interval'),
         });
-        refreshRow.connect('changed', (w) => {
-            window._settings.set_int('refresh-interval', w.value);
+        intervalRow.connect('changed', (row) => {
+            window._settings.set_int('refresh-interval', row.value);
         });
-        general.add(refreshRow);
+        group.add(intervalRow);
 
-        let hermesHomeRow = new Adw.EntryRow({
-            title: _('Hermes home directory'),
+        const panelGroup = new Adw.PreferencesGroup({
+            title: _('Panel'),
         });
-        hermesHomeRow.set_text(window._settings.get_string('hermes-home'));
-        hermesHomeRow.connect('changed', (w) => {
-            window._settings.set_string('hermes-home', w.get_text());
-        });
-        general.add(hermesHomeRow);
+        page.add(panelGroup);
 
-        // ── Panel group ────────────────────────────
-        let panel = new Adw.PreferencesGroup({title: _('Panel')});
-        page.add(panel);
+        const positions = new Gtk.StringList();
+        positions.append(_('Right'));
+        positions.append(_('Center'));
+        positions.append(_('Left'));
 
-        let posRow = new Adw.ComboRow({
-            title: _('Panel position'),
-            subtitle: _('Where to place the indicator in the top bar'),
-            model: Gtk.StringList.new(['left', 'center', 'right']),
+        const positionRow = new Adw.ComboRow({
+            title: _('Position in Panel'),
+            subtitle: _('Where to show the indicator'),
+            model: positions,
+            selected: window._settings.get_int('position-in-panel'),
         });
-        let posMap = {left: 0, center: 1, right: 2};
-        let currentPos = window._settings.get_string('panel-position');
-        posRow.set_selected(posMap[currentPos] || 2);
-        posRow.connect('notify::selected', (w) => {
-            let keys = ['left', 'center', 'right'];
-            window._settings.set_string('panel-position', keys[w.selected] || 'right');
+        positionRow.connect('notify::selected', (row) => {
+            window._settings.set_int('position-in-panel', row.selected);
         });
-        panel.add(posRow);
+        panelGroup.add(positionRow);
     }
 }

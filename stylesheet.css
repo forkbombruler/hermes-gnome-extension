@@ -1,44 +1,99 @@
-/* Hermes Monitor — Stylesheet */
+/* Panel indicator label */
+.hermes-panel-label {
+    font-size: 14px;
+    padding: 0 4px;
+}
 
-.hermes-panel-icon { padding: 0 2px; }
-.hermes-panel-label { font-size: 0.75em; font-weight: bold; margin-left: 2px; }
+/* Summary label at top of menu */
+.hermes-summary-label {
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px 12px;
+}
 
-.hermes-menu-header { font-weight: bold; font-size: 1.05em; padding: 8px 12px 4px; }
-.hermes-empty { color: #8b949e; font-style: italic; padding: 4px 12px; }
+/* Empty state */
+.hermes-empty-label {
+    font-style: italic;
+    color: #888;
+    padding: 12px 16px;
+}
 
-.hermes-job-item { padding: 4px 12px; min-width: 280px; }
-.hermes-job-icon { font-size: 1.1em; margin-right: 6px; }
-.hermes-job-name { font-weight: 600; font-size: 0.92em; }
-.hermes-job-meta { margin-top: 2px; }
-.hermes-job-detail { font-size: 0.78em; color: #8b949e; }
-.hermes-job-brief { font-size: 0.74em; color: #6e7681; margin-top: 2px; padding-left: 22px; }
+/* Job row container */
+.hermes-job-row {
+    padding: 6px 0;
+}
 
-.hermes-log-dialog {
-    background-color: #161b22; border: 1px solid #30363d; border-radius: 10px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.5); padding: 0;
+/* Status dot */
+.hermes-status-dot {
+    font-size: 14px;
+    padding-right: 6px;
+    min-width: 18px;
 }
-.hermes-log-header {
-    background-color: #0d1117; border-bottom: 1px solid #30363d;
-    border-radius: 10px 10px 0 0; padding: 10px 14px;
+
+.hermes-status-running {
+    color: #33d17a;
 }
-.hermes-log-title { font-weight: bold; font-size: 1.05em; color: #58a6ff; }
-.hermes-close-btn {
-    background: none; border: none; color: #8b949e; font-size: 1.1em;
-    padding: 2px 6px; border-radius: 4px;
+
+.hermes-status-pending {
+    color: #f5a97f;
 }
-.hermes-close-btn:hover { background-color: #30363d; color: #f85149; }
-.hermes-log-scroll { background-color: #0d1117; padding: 10px 14px; }
-.hermes-log-text {
-    font-family: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
-    font-size: 0.78em; line-height: 1.4; white-space: pre-wrap;
+
+.hermes-status-idle {
+    color: #a5adcb;
 }
-.hermes-log-footer {
-    background-color: #0d1117; border-top: 1px solid #30363d;
-    border-radius: 0 0 10px 10px; padding: 8px 14px;
+
+.hermes-status-failed {
+    color: #ed879f;
 }
-.hermes-action-btn {
-    background-color: #30363d; border: 1px solid #484f58;
-    color: #c9d1d9; padding: 4px 16px; border-radius: 6px; font-size: 0.85em;
+
+.hermes-status-disabled {
+    color: #6e738d;
 }
-.hermes-action-btn:hover { background-color: #484f58; }
-.hermes-action-btn:active { background-color: #21262d; }
+
+/* Job name — primary text */
+.hermes-job-name {
+    font-weight: 600;
+    font-size: 13px;
+    padding-right: 8px;
+}
+
+/* Schedule badge */
+.hermes-job-schedule {
+    font-size: 11px;
+    color: #8aadf4;
+    background: rgba(138, 173, 244, 0.12);
+    border-radius: 4px;
+    padding: 1px 6px;
+}
+
+/* Secondary metadata line */
+.hermes-job-meta {
+    font-size: 11px;
+    color: #939ab7;
+    padding-top: 2px;
+    padding-left: 24px;
+}
+
+.hermes-last-success {
+    color: #a6da95;
+}
+
+.hermes-last-failed {
+    color: #ed879f;
+}
+
+/* Footer */
+.hermes-footer-item {
+    padding: 4px 12px;
+}
+
+.hermes-button-box {
+    spacing: 8px;
+}
+
+.hermes-footer-button {
+    border-radius: 18px;
+    padding: 6px;
+    min-width: 32px;
+    min-height: 32px;
+}

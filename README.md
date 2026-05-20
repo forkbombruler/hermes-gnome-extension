@@ -10,6 +10,7 @@
 - **📋 Session list** — recent sessions with model, message count, tool calls, and cost
 - **⏰ Cron jobs** — all scheduled jobs with status icons, schedule badges, and next-run times
 - **Running job badge** — panel indicator shows `⚡N` when jobs are actively running
+- **🚀 Launch Dashboard** — one-click button to open the Hermes web dashboard (`http://127.0.0.1:9119`) in your browser
 - **Auto-refresh** — configurable polling interval (default 30 seconds)
 - **In-place updates** — no full-menu rebuilds; smooth, efficient rendering
 

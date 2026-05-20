@@ -168,6 +168,16 @@ var HermesMenuButton = GObject.registerClass({
         });
         btnBox.add_child(refreshBtn);
 
+        let dashBtn = this._createFooterButton('emblem-system-symbolic', _('Launch Dashboard'));
+        dashBtn.connect('clicked', () => {
+            let hermesPath = GLib.find_program_in_path('hermes') ||
+                GLib.build_filenamev([GLib.get_home_dir(), '.local', 'bin', 'hermes']);
+            let proc = Gio.Subprocess.new([hermesPath, 'dashboard'], Gio.SubprocessFlags.NONE);
+            proc.wait_async(null, null);
+            Gio.AppInfo.launch_default_for_uri('http://127.0.0.1:9119', null);
+        });
+        btnBox.add_child(dashBtn);
+
         let prefsBtn = this._createFooterButton('preferences-system-symbolic', _('Preferences'));
         prefsBtn.connect('clicked', () => {
             this.menu._getTopMenu().close();

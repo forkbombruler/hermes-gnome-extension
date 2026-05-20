@@ -1,6 +1,6 @@
 # Hermes Monitor — GNOME Shell Extension
 
-🐺 Monitor [Hermes Agent](https://github.com/Leos-byte/Leos) scheduled tasks (cron jobs) directly from the GNOME top panel. One click to view all jobs — another click to see real-time execution logs.
+🐺 Monitor [Hermes Agent](https://github.com/nousresearch/hermes-agent) scheduled tasks (cron jobs) directly from the GNOME top panel. One click to view all jobs — another click to see real-time execution logs.
 
 ![screenshot](screenshots/panel.png)
 

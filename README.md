@@ -70,6 +70,10 @@ hermes-gnome-extension/
 └── locale/               # Translations (TODO)
 ```
 
+## Credits
+
+This extension's panel indicator and menu architecture was inspired by [Vitals](https://github.com/corecoding/Vitals) — a GNOME Shell extension for monitoring system sensors. Thanks to [@corecoding](https://github.com/corecoding) for the excellent reference implementation.
+
 ## License
 
 MIT — see [LICENSE](LICENSE)

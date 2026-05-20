@@ -3,8 +3,15 @@
   "gettext-domain": "hermes-monitor",
   "name": "Hermes Monitor",
   "settings-schema": "org.gnome.shell.extensions.hermes-monitor",
-  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
   "url": "https://github.com/forkbombruler/hermes-gnome-extension",
   "uuid": "hermes-monitor@leo",
-  "version": 3
+  "version": 3.1
 }

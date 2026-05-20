@@ -73,6 +73,8 @@ var HermesMenuButton = GObject.registerClass({
         this._jobRows = {};
         this._sessionRows = {};
         this._usageLabels = {};
+        this._sections = {usage: true, sessions: true, jobs: true};
+        this._sectionChevrons = {};
         this._settingChangedSignals = [];
         this._refreshTimeoutId = null;
 
@@ -94,7 +96,7 @@ var HermesMenuButton = GObject.registerClass({
 
     _initializeMenu() {
         // Section 1: Usage
-        this._usageHeader = this._createSectionHeader('📊 ' + _('Usage'));
+        this._usageHeader = this._createSectionHeader('📊 ' + _('Usage'), 'usage');
         this.menu.addMenuItem(this._usageHeader);
 
         this._usageItem = new PopupMenu.PopupBaseMenuItem({
@@ -114,7 +116,7 @@ var HermesMenuButton = GObject.registerClass({
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         // Section 2: Sessions
-        this._sessionsHeader = this._createSectionHeader('📋 ' + _('Sessions'));
+        this._sessionsHeader = this._createSectionHeader('📋 ' + _('Sessions'), 'sessions');
         this.menu.addMenuItem(this._sessionsHeader);
 
         this._emptySessionsItem = new PopupMenu.PopupBaseMenuItem({
@@ -129,7 +131,7 @@ var HermesMenuButton = GObject.registerClass({
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         // Section 3: Cron Jobs
-        this._jobsHeader = this._createSectionHeader('⏰ ' + _('Cron Jobs'));
+        this._jobsHeader = this._createSectionHeader('⏰ ' + _('Cron Jobs'), 'jobs');
         this.menu.addMenuItem(this._jobsHeader);
 
         this._emptyJobsItem = new PopupMenu.PopupBaseMenuItem({
@@ -177,16 +179,60 @@ var HermesMenuButton = GObject.registerClass({
         });
     }
 
-    _createSectionHeader(text) {
+    _createSectionHeader(text, sectionName) {
         let item = new PopupMenu.PopupBaseMenuItem({
             reactive: false, can_focus: false,
             style_class: 'hermes-section-header',
         });
-        item.actor.add_child(new St.Label({
+        let box = new St.BoxLayout({
+            vertical: false, x_expand: true,
+            reactive: true, track_hover: true,
+        });
+        let chevron = new St.Label({
+            text: '▼',
+            style_class: 'hermes-section-chevron',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._sectionChevrons[sectionName] = chevron;
+        box.add_child(chevron);
+        box.add_child(new St.Label({
             text,
             style_class: 'hermes-section-header-label',
         }));
+        item.actor.add_child(box);
+        box.connect('button-press-event', (actor, event) => {
+            this._toggleSection(sectionName);
+            return Clutter.EVENT_STOP;
+        });
         return item;
+    }
+
+    _toggleSection(name) {
+        this._sections[name] = !this._sections[name];
+        this._sectionChevrons[name].text = this._sections[name] ? '▼' : '▶';
+        this._applySectionVisibility(name);
+    }
+
+    _applySectionVisibility(name) {
+        let expanded = this._sections[name];
+        switch (name) {
+        case 'usage':
+            if (this._usageItem)
+                this._usageItem.actor.visible = expanded;
+            break;
+        case 'sessions':
+            for (let id of Object.keys(this._sessionRows))
+                this._sessionRows[id].item.actor.visible = expanded;
+            this._emptySessionsItem.actor.visible =
+                expanded && Object.keys(this._sessionRows).length === 0;
+            break;
+        case 'jobs':
+            for (let id of Object.keys(this._jobRows))
+                this._jobRows[id].item.actor.visible = expanded;
+            this._emptyJobsItem.actor.visible =
+                expanded && Object.keys(this._jobRows).length === 0;
+            break;
+        }
     }
 
     _addUsageRow(parent, label) {
@@ -278,7 +324,8 @@ var HermesMenuButton = GObject.registerClass({
             }
         }
 
-        this._emptySessionsItem.actor.visible = sessions.length === 0;
+        this._emptySessionsItem.actor.visible =
+            this._sections.sessions && sessions.length === 0;
     }
 
     _createSessionRow(session) {
@@ -379,7 +426,8 @@ var HermesMenuButton = GObject.registerClass({
             }
         }
 
-        this._emptyJobsItem.actor.visible = jobs.length === 0;
+        this._emptyJobsItem.actor.visible =
+            this._sections.jobs && jobs.length === 0;
 
         let running = 0;
         for (let j of jobs) {

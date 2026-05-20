@@ -9,6 +9,12 @@
     padding: 4px 12px;
 }
 
+.hermes-section-chevron {
+    font-size: 10px;
+    padding-right: 4px;
+    color: #8aadf4;
+}
+
 .hermes-section-header-label {
     font-weight: bold;
     font-size: 12px;

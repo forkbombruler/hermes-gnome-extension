@@ -1,6 +1,7 @@
 # Build artifacts
 *.zip
 *.shell-extension.zip
+schemas/gschemas.compiled
 
 # IDE
 .vscode/

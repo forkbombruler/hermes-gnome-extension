@@ -59,6 +59,11 @@ var HermesMenuButton = GObject.registerClass({
     _init(extensionObject) {
         super._init(Clutter.ActorAlign.FILL);
 
+        let cssFile = Gio.File.new_for_path(
+            GLib.build_filenamev([extensionObject.path, 'stylesheet.css']));
+        if (cssFile.query_exists(null))
+            St.ThemeContext.get_for_stage(global.stage).get_theme().load_stylesheet(cssFile);
+
         this._extensionObject = extensionObject;
         this._settings = extensionObject.getSettings();
 
@@ -574,7 +579,7 @@ var HermesMenuButton = GObject.registerClass({
             case 0: return ['right', 0];
             case 1: return ['center', 0];
             case 2: return ['left', 0];
-            default: return ['right', 0];
+            default: return ['left', 0];
         }
     }
 

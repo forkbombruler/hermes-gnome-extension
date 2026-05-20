@@ -55,5 +55,19 @@ export default class HermesPreferences extends ExtensionPreferences {
             window._settings.set_int('position-in-panel', row.selected);
         });
         panelGroup.add(positionRow);
+
+        const pathGroup = new Adw.PreferencesGroup({
+            title: _('Hermes Agent'),
+        });
+        page.add(pathGroup);
+
+        const homeRow = new Adw.EntryRow({
+            title: _('Hermes Home'),
+            text: window._settings.get_string('hermes-home'),
+        });
+        homeRow.connect('changed', (row) => {
+            window._settings.set_string('hermes-home', row.text);
+        });
+        pathGroup.add(homeRow);
     }
 }

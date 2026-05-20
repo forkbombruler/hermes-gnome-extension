@@ -279,6 +279,16 @@ var HermesMenuButton = GObject.registerClass({
             this._updateUsageSection(data.usage || {});
             this._updateSessionsSection(data.sessions || []);
             this._updateJobsSection(data.jobs || []);
+            // Panel indicator: working=blink, idle=green
+            if (data.agent_status === 'working') {
+                this._panelLabel.text = '⚙️';
+                this._panelLabel.add_style_class_name('hermes-panel-working');
+                this._panelLabel.remove_style_class_name('hermes-panel-idle');
+            } else {
+                this._panelLabel.text = '⚙️';
+                this._panelLabel.add_style_class_name('hermes-panel-idle');
+                this._panelLabel.remove_style_class_name('hermes-panel-working');
+            }
         } catch (e) {
             log('[hermes-monitor] refresh error: ' + e.message);
         }
@@ -434,7 +444,6 @@ var HermesMenuButton = GObject.registerClass({
             if (j.state === 'running')
                 running++;
         }
-        this._panelLabel.text = running > 0 ? '⚡' + running : '⚡';
     }
 
     _createJobRow(job) {

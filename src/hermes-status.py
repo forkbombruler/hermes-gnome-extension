@@ -55,6 +55,18 @@ def get_jobs() -> list[dict]:
 
 # ── Session stats ──────────────────────────────────────────────────────
 
+def _agent_status() -> str:
+    """Check if Hermes Agent is currently working (processing a request)."""
+    state_file = HERMES_HOME / "gateway_state.json"
+    if not state_file.exists():
+        return "idle"
+    try:
+        data = json.loads(state_file.read_text())
+        return "working" if data.get("active_agents", 0) > 0 else "idle"
+    except Exception:
+        return "idle"
+
+
 def get_usage() -> dict:
     """Aggregate usage across all sessions."""
     if not STATE_DB.exists():
@@ -133,6 +145,7 @@ if __name__ == "__main__":
             "jobs": get_jobs(),
             "usage": get_usage(),
             "sessions": get_sessions(10),
+            "agent_status": _agent_status(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         print(json.dumps(output, ensure_ascii=False))

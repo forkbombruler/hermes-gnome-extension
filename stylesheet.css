@@ -4,6 +4,20 @@
     padding: 0 4px;
 }
 
+.hermes-panel-idle {
+    color: #33d17a;
+}
+
+.hermes-panel-working {
+    color: #f5a97f;
+    animation: hermes-blink 1s ease-in-out infinite;
+}
+
+@keyframes hermes-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
 /* Section headers */
 .hermes-section-header {
     padding: 4px 12px;

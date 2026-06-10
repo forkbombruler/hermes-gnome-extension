@@ -46,6 +46,10 @@
 
 /* ── Sessions section ──────────────────────────────────────────────── */
 
+.hermes-sessions-scroll {
+    max-height: 200px;
+}
+
 .hermes-session-row {
     padding: 6px 0;
 }

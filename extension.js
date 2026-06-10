@@ -123,6 +123,19 @@ var HermesMenuButton = GObject.registerClass({
         this._sessionsHeader = this._createSectionHeader('📋 ' + _('Sessions'), 'sessions');
         this.menu.addMenuItem(this._sessionsHeader);
 
+        this._sessionsScrollBox = new St.BoxLayout({vertical: true});
+        this._sessionsScrollView = new St.ScrollView({
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            style_class: 'hermes-sessions-scroll',
+        });
+        this._sessionsScrollView.add_child(this._sessionsScrollBox);
+        this._sessionsScrollItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false, can_focus: false,
+        });
+        this._sessionsScrollItem.actor.add_child(this._sessionsScrollView);
+        this.menu.addMenuItem(this._sessionsScrollItem);
+
         this._emptySessionsItem = new PopupMenu.PopupBaseMenuItem({
             reactive: false, can_focus: false,
         });
@@ -235,8 +248,7 @@ var HermesMenuButton = GObject.registerClass({
                 this._usageItem.actor.visible = expanded;
             break;
         case 'sessions':
-            for (let id of Object.keys(this._sessionRows))
-                this._sessionRows[id].item.actor.visible = expanded;
+            this._sessionsScrollItem.actor.visible = expanded;
             this._emptySessionsItem.actor.visible =
                 expanded && Object.keys(this._sessionRows).length === 0;
             break;
@@ -329,7 +341,6 @@ var HermesMenuButton = GObject.registerClass({
                 this._removeSessionRow(id);
         }
 
-        let insertIdx = this._insertBefore(this._emptySessionsItem);
         for (let i = 0; i < sessions.length; i++) {
             let s = sessions[i];
             if (this._sessionRows[s.id]) {
@@ -337,7 +348,7 @@ var HermesMenuButton = GObject.registerClass({
             } else {
                 let row = this._createSessionRow(s);
                 this._sessionRows[s.id] = row;
-                this.menu.addMenuItem(row.item, insertIdx + i);
+                this._sessionsScrollBox.add_child(row.box);
             }
         }
 
@@ -393,12 +404,7 @@ var HermesMenuButton = GObject.registerClass({
 
         box.add_child(bottomLine);
 
-        let item = new PopupMenu.PopupBaseMenuItem({
-            reactive: false, can_focus: false,
-        });
-        item.actor.add_child(box);
-
-        return {item, titleLabel, costLabel, metaLabel};
+        return {box, titleLabel, costLabel, metaLabel};
     }
 
     _updateSessionRow(session, row) {
@@ -416,7 +422,7 @@ var HermesMenuButton = GObject.registerClass({
 
     _removeSessionRow(id) {
         if (this._sessionRows[id]) {
-            this._sessionRows[id].item.destroy();
+            this._sessionRows[id].box.destroy();
             delete this._sessionRows[id];
         }
     }
